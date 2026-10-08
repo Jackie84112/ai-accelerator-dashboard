@@ -32,10 +32,6 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
 .seg button{ font:inherit; font-size:12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:4px; padding:3px 9px; cursor:pointer }
 .seg button[aria-pressed="true"]{ background:#3bbd8f; border-color:#3bbd8f; color:#fff }
 .seg button:focus-visible{ outline:2px solid var(--bar); outline-offset:1px }
-.tabs{ display:flex; gap:4px; flex-wrap:wrap }
-.tabs a{ font-size:13px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:4px; padding:4px 11px; text-decoration:none }
-.tabs a[aria-current="page"]{ background:#3bbd8f; border-color:#3bbd8f; color:#fff }
-.tabs a:focus-visible{ outline:2px solid var(--bar); outline-offset:1px }
 #chart1{ width:100%; height:480px }
 .tbl-wrap{ overflow-x:auto; padding:8px 10px }
 table.num{ border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap }
@@ -52,10 +48,6 @@ table.num tr.child td:first-child{ padding-left:22px }
 </style>
 
 <div class="wrap">
-  <nav class="tabs" aria-label="頁面">
-    <a href="index.html" aria-current="page">出貨顆數</a>
-    <a href="asic.html">ASIC 代數與時程</a>
-  </nav>
   <h1>AI 加速器出貨：GPU vs ASIC<span class="tk">萬顆</span></h1>
   <p class="meta">年度出貨顆數（萬顆）與 ASIC 佔比。點圖例可開關各序列；上方切換修正前／修正版。</p>
 
