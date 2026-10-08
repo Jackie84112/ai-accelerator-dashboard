@@ -98,15 +98,13 @@ table.num tr.child td:first-child{ padding-left:22px }
   function buildTable(){
     var d=mode==="adj"?ADJ:ORIG, n=YRS.length;
     function f(v){ return v==null?"—":Highcharts.numberFormat(v,v%1?1:0); }
-    function yo(s,i){ if(i===0||!s[i-1]) return "—"; var r=(s[i]/s[i-1]-1)*100; return (r>0?"+":"")+Math.round(r)+"%"; }
-    function pc(a,b){ return b?(a/b*100).toFixed(1)+"%":"—"; }
-    function isAdj(k,i){ return mode==="adj" && ADJ[k][i]!==ORIG[k][i]; }
+    var HL={OpenAI:1};   // 整列藍底：GW 換算的新增列
     var G=YRS.map(function(_,i){ return sum(d,GPU,i); }), A=YRS.map(function(_,i){ return sum(d,ASIC,i); });
     var T=G.map(function(g,i){ return g+A[i]; });
     var h='<thead><tr><th>萬顆</th>'+YRS.map(function(y){ return "<th>"+y+"</th>"; }).join("")+"</tr></thead><tbody>";
     function row(label,cells,cls){ return '<tr'+(cls?' class="'+cls+'"':'')+'><td>'+label+"</td>"+cells.join("")+"</tr>"; }
-    function vend(k){ return row(NAME[k], d[k].map(function(v,i){ return '<td'+(isAdj(k,i)?' class="adj"':'')+'>'+f(v)+"</td>"; })); }
-    function plain(arr){ return arr.map(function(v){ return "<td>"+v+"</td>"; }); }
+    function vend(k){ return row(NAME[k], d[k].map(function(v,i){ return '<td'+(HL[k]?' class="adj"':'')+'>'+f(v)+"</td>"; })); }
+    function plain(arr,cls){ return arr.map(function(v){ return "<td"+(cls?' class="'+cls+'"':"")+">"+v+"</td>"; }); }
     function grp(t){ return '<tr class="grp"><td colspan="'+(n+1)+'">'+t+"</td></tr>"; }
     h+=grp("出貨顆數");
     GPU.forEach(function(k){ h+=vend(k); });
@@ -114,24 +112,12 @@ table.num tr.child td:first-child{ padding-left:22px }
     ASIC.forEach(function(k){
       if(mode==="orig" && k==="OpenAI") return;
       h+=vend(k);
-      if(k==="Google" && mode==="adj") h+=row("其中 Anthropic",plain(ANTH.map(function(v){ return v==null?"—":"~"+f(v); })),"child");
+      if(k==="Google" && mode==="adj") h+=row("其中 Anthropic",plain(ANTH.map(function(v){ return v==null?"—":"~"+f(v); }),"adj"),"child");
     });
     h+=row("ASIC 小計",plain(A.map(f)),"sub");
     h+=row("合計",plain(T.map(f)),"tot");
-    h+=grp("年增率");
-    h+=row("GPU",plain(YRS.map(function(_,i){ return yo(G,i); })));
-    h+=row("ASIC",plain(YRS.map(function(_,i){ return yo(A,i); })));
-    h+=row("Google TPU",plain(YRS.map(function(_,i){ return yo(d.Google,i); })));
-    h+=row("合計",plain(YRS.map(function(_,i){ return yo(T,i); })));
-    h+=grp("市佔率");
-    h+=row("ASIC／總量",plain(YRS.map(function(_,i){ return pc(A[i],T[i]); })),"sub");
-    h+=row("NVIDIA／GPU",plain(YRS.map(function(_,i){ return pc(d.NVIDIA[i],G[i]); })));
-    ASIC.forEach(function(k){
-      if(mode==="orig" && k==="OpenAI") return;
-      h+=row(NAME[k].split(" ")[0]+"／ASIC",plain(YRS.map(function(_,i){ return d[k][i]?pc(d[k][i],A[i]):"—"; })));
-    });
     document.getElementById("tbl").innerHTML=h+"</tbody>";
-    document.getElementById("tblNote").textContent=mode==="adj"?"藍底粗體＝修正格；Anthropic 為依 GW 換算的估計，已含於 Google TPU。":"";
+    document.getElementById("tblNote").textContent=mode==="adj"?"藍底＝依博通法說會 GW 換算的估計；Anthropic 已含於 Google TPU，OpenAI 為新增列。":"";
   }
 
   function tok(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
