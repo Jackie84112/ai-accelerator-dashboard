@@ -33,6 +33,17 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
 .seg button[aria-pressed="true"]{ background:#3bbd8f; border-color:#3bbd8f; color:#fff }
 .seg button:focus-visible{ outline:2px solid var(--bar); outline-offset:1px }
 #chart1{ width:100%; height:480px }
+.tbl-wrap{ overflow-x:auto; padding:8px 10px }
+table.num{ border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap }
+table.num th, table.num td{ padding:5px 10px; text-align:right; border-bottom:1px solid var(--line) }
+table.num th:first-child, table.num td:first-child{ text-align:left; position:sticky; left:0; background:var(--card) }
+table.num thead th{ color:var(--muted); font-weight:500 }
+table.num tr.grp td{ color:var(--muted); font-size:12px; font-weight:500; padding-top:14px; border-bottom:none }
+table.num tr.sub td{ font-weight:700 }
+table.num tr.child td{ color:var(--muted); font-size:12px }
+table.num tr.tot td{ font-weight:700; border-bottom:2px solid var(--line) }
+table.num td.adj{ font-weight:700; background:rgba(66,169,229,.14) }
+table.num tr.child td:first-child{ padding-left:22px }
 @media (max-width:480px){ #chart1{ height:420px } h1{ font-size:19px } }
 </style>
 
@@ -53,6 +64,10 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
     <b>修正版</b>＝修正前數字＋OpenAI 新增列＋2028 Google TPU 上修（1,160→1,235 萬顆）＋2023–2025 MSFT 改用另一家券商的細項（1.2／2.2／0 萬，原表因單位為 0.1 百萬顆而顯示 0），GW 換算：TPU 當代 1.2kW、TPU 下一代 1.5kW、OpenAI XPU 1.75kW（每顆含系統分攤，TPU 依據 Google Ironwood 9,216 顆約 10MW）。2026E 起為預估。
   </p>
   <p class="note">[註]: Anthropic 繼 2026 年 1GW Ironwood 後，2027 年再部署 5GW TPU v8i，2028 年再增加 10GW；OpenAI Jalapeño 2027 年部署 1.3GW、2028 年逾 5GW（26Q2 法說會）。</p>
+
+  <h2>數值參考</h2>
+  <div class="card tbl-wrap"><table class="num" id="tbl"></table></div>
+  <p class="note">單位：萬顆；隨上方「修正版／修正前」切換。<span id="tblNote"></span></p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.8/highcharts.js"></script>
@@ -75,7 +90,49 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
   var GPU=["NVIDIA","AMD"], ASIC=["Google","AWS","Meta","MSFT","OpenAI"];
   var NAME={NVIDIA:"NVIDIA GPU",AMD:"AMD GPU",Google:"Google TPU",AWS:"AWS Trainium",Meta:"Meta MTIA",MSFT:"MSFT Maia",OpenAI:"OpenAI XPU"};
   var COL={NVIDIA:"#1F5FA8",AMD:"#7FB3E0",Google:"#16A085",AWS:"#F39C12",Meta:"#8E44AD",MSFT:"#5D6D7E",OpenAI:"#C0392B"};
+  // 修正版 Google TPU 中 Anthropic 部分（1GW÷1.2kW、5GW÷1.2kW、10GW÷1.5kW）
+  var ANTH=[null,null,null,83,417,667];
   var mode="adj", chart1;
+
+  /* ---------- 數值參考表 ---------- */
+  function buildTable(){
+    var d=mode==="adj"?ADJ:ORIG, n=YRS.length;
+    function f(v){ return v==null?"—":Highcharts.numberFormat(v,v%1?1:0); }
+    function yo(s,i){ if(i===0||!s[i-1]) return "—"; var r=(s[i]/s[i-1]-1)*100; return (r>0?"+":"")+Math.round(r)+"%"; }
+    function pc(a,b){ return b?(a/b*100).toFixed(1)+"%":"—"; }
+    function isAdj(k,i){ return mode==="adj" && ADJ[k][i]!==ORIG[k][i]; }
+    var G=YRS.map(function(_,i){ return sum(d,GPU,i); }), A=YRS.map(function(_,i){ return sum(d,ASIC,i); });
+    var T=G.map(function(g,i){ return g+A[i]; });
+    var h='<thead><tr><th>萬顆</th>'+YRS.map(function(y){ return "<th>"+y+"</th>"; }).join("")+"</tr></thead><tbody>";
+    function row(label,cells,cls){ return '<tr'+(cls?' class="'+cls+'"':'')+'><td>'+label+"</td>"+cells.join("")+"</tr>"; }
+    function vend(k){ return row(NAME[k], d[k].map(function(v,i){ return '<td'+(isAdj(k,i)?' class="adj"':'')+'>'+f(v)+"</td>"; })); }
+    function plain(arr){ return arr.map(function(v){ return "<td>"+v+"</td>"; }); }
+    function grp(t){ return '<tr class="grp"><td colspan="'+(n+1)+'">'+t+"</td></tr>"; }
+    h+=grp("出貨顆數");
+    GPU.forEach(function(k){ h+=vend(k); });
+    h+=row("GPU 小計",plain(G.map(f)),"sub");
+    ASIC.forEach(function(k){
+      if(mode==="orig" && k==="OpenAI") return;
+      h+=vend(k);
+      if(k==="Google" && mode==="adj") h+=row("其中 Anthropic",plain(ANTH.map(function(v){ return v==null?"—":"~"+f(v); })),"child");
+    });
+    h+=row("ASIC 小計",plain(A.map(f)),"sub");
+    h+=row("合計",plain(T.map(f)),"tot");
+    h+=grp("年增率");
+    h+=row("GPU",plain(YRS.map(function(_,i){ return yo(G,i); })));
+    h+=row("ASIC",plain(YRS.map(function(_,i){ return yo(A,i); })));
+    h+=row("Google TPU",plain(YRS.map(function(_,i){ return yo(d.Google,i); })));
+    h+=row("合計",plain(YRS.map(function(_,i){ return yo(T,i); })));
+    h+=grp("市佔率");
+    h+=row("ASIC／總量",plain(YRS.map(function(_,i){ return pc(A[i],T[i]); })),"sub");
+    h+=row("NVIDIA／GPU",plain(YRS.map(function(_,i){ return pc(d.NVIDIA[i],G[i]); })));
+    ASIC.forEach(function(k){
+      if(mode==="orig" && k==="OpenAI") return;
+      h+=row(NAME[k].split(" ")[0]+"／ASIC",plain(YRS.map(function(_,i){ return d[k][i]?pc(d[k][i],A[i]):"—"; })));
+    });
+    document.getElementById("tbl").innerHTML=h+"</tbody>";
+    document.getElementById("tblNote").textContent=mode==="adj"?"藍底粗體＝修正格；Anthropic 為依 GW 換算的估計，已含於 Google TPU。":"";
+  }
 
   function tok(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
   function sum(d,keys,i){ return keys.reduce(function(s,k){ return s+d[k][i]; },0); }
@@ -140,12 +197,12 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
     mode=m;
     document.getElementById("segAdj").setAttribute("aria-pressed",m==="adj");
     document.getElementById("segOrig").setAttribute("aria-pressed",m==="orig");
-    build1();
+    build1(); buildTable();
   }
   document.getElementById("segAdj").addEventListener("click",function(){ setMode("adj"); });
   document.getElementById("segOrig").addEventListener("click",function(){ setMode("orig"); });
 
-  function build(){ build1(); }
+  function build(){ build1(); buildTable(); }
   Highcharts.setOptions({ lang:{ thousandsSep:"," } });
   build();
   var mq=window.matchMedia("(prefers-color-scheme: dark)");
