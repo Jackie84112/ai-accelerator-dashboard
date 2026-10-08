@@ -38,19 +38,19 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
 
 <div class="wrap">
   <h1>AI 加速器出貨：GPU vs ASIC<span class="tk">萬顆</span></h1>
-  <p class="meta">年度出貨顆數（萬顆）與 ASIC 佔比。點圖例可開關各序列；上方切換 JPM 原表／修正版。</p>
+  <p class="meta">年度出貨顆數（萬顆）與 ASIC 佔比。點圖例可開關各序列；上方切換修正前／修正版。</p>
 
   <h2>GPU 與 ASIC 出貨顆數、ASIC 佔比</h2>
   <div class="card">
     <div class="seg" role="group" aria-label="資料版本">
       <button type="button" id="segAdj" aria-pressed="true">修正版</button>
-      <button type="button" id="segOrig" aria-pressed="false">JPM 原表</button>
+      <button type="button" id="segOrig" aria-pressed="false">修正前</button>
     </div>
     <div id="chart1"></div>
   </div>
   <p class="note">
-    <b>資料：</b>J.P. Morgan〈US Semiconductors〉2026/9/1 第 10 頁（原表單位百萬顆，×100 換算萬顆）。
-    <b>修正版</b>＝JPM 原表＋OpenAI 新增列＋2028 Google TPU 上修（1,160→1,235 萬顆），GW 換算：TPU 當代 1.2kW、TPU 下一代 1.5kW、OpenAI XPU 1.75kW（每顆含系統分攤，TPU 依據 Google Ironwood 9,216 顆約 10MW）。2026E 起為預估。
+    <b>資料：</b>綜合券商報告（2026/9），單位換算為萬顆。
+    <b>修正版</b>＝修正前數字＋OpenAI 新增列＋2028 Google TPU 上修（1,160→1,235 萬顆），GW 換算：TPU 當代 1.2kW、TPU 下一代 1.5kW、OpenAI XPU 1.75kW（每顆含系統分攤，TPU 依據 Google Ironwood 9,216 顆約 10MW）。2026E 起為預估。
   </p>
   <p class="note">[註]: Anthropic 繼 2026 年 1GW Ironwood 後，2027 年再部署 5GW TPU v8i，2028 年再增加 10GW；OpenAI Jalapeño 2027 年部署 1.3GW、2028 年逾 5GW（26Q2 法說會）。</p>
 </div>
@@ -59,7 +59,7 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
 <script>
 (function(){
   var YRS=["2023","2024","2025","2026E","2027E","2028E"];
-  // 萬顆；JPM 原表（百萬顆 ×100）
+  // 萬顆；修正前（綜合券商報告）
   var ORIG={
     NVIDIA:[170,450,620,890,1000,1160], AMD:[10,50,70,70,150,230],
     Google:[120,170,180,440,890,1160], AWS:[30,80,150,190,350,350],
@@ -91,7 +91,7 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
     var opts={
       chart:{ backgroundColor:card, style:{fontFamily:font}, spacing:[10,16,8,8] },
       title:{ text:"GPU vs ASIC 出貨顆數", style:{color:fg,fontSize:"15px",fontWeight:"700"} },
-      subtitle:{ text:mode==="adj"?"J.P. Morgan 2026/9/1＋博通法說會修正":"J.P. Morgan 2026/9/1 原表", style:{color:muted,fontSize:"11px"} },
+      subtitle:{ text:mode==="adj"?"綜合券商報告＋博通法說會修正":"綜合券商報告（修正前）", style:{color:muted,fontSize:"11px"} },
       credits:{ enabled:false },
       legend:{ enabled:true, align:"center", verticalAlign:"bottom", itemStyle:{color:fg,fontSize:"12px",fontWeight:"400"},
         itemHiddenStyle:{color:"#9aa5b1"}, itemHoverStyle:{color:fg}, symbolRadius:6 },
