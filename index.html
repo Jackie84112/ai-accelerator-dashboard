@@ -84,7 +84,6 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
     var fg=tok("--fg"), muted=tok("--muted"), grid=tok("--grid"), card=tok("--card"), font=tok("--font"), red=tok("--yoy");
     var d=mode==="adj"?ADJ:ORIG;
     var share=YRS.map(function(_,i){ var a=sum(d,ASIC,i), g=sum(d,GPU,i); return +((a/(a+g))*100).toFixed(1); });
-    var maxStack=Math.max.apply(null,YRS.map(function(_,i){ return Math.max(sum(d,GPU,i),sum(d,ASIC,i)); }));
     var series=[];
     GPU.concat(ASIC).forEach(function(k){
       if(mode==="orig" && k==="OpenAI") return;
@@ -103,18 +102,17 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
         plotBands:[{ from:2.5, to:5.5, color:"rgba(150,160,170,0.08)", label:{ text:"預估", style:{color:muted,fontSize:"11px"} } }] },
       yAxis:[
         { title:{text:"萬顆",style:{color:muted,fontSize:"11px"}}, gridLineColor:grid, min:0, stackLabels:{enabled:false},
-          max:Math.ceil(maxStack*1.8/500)*500, endOnTick:false,   // 柱頂上方留空間給提示框
           labels:{ style:{color:muted,fontSize:"11px"}, formatter:function(){ return Highcharts.numberFormat(this.value,0); } } },
         { title:{text:"ASIC 佔比 %",style:{color:muted,fontSize:"11px"}}, opposite:true, gridLineWidth:0, min:0, max:100,
           labels:{ style:{color:muted,fontSize:"11px"}, format:"{value}%" } }
       ],
-      tooltip:{ shared:true, useHTML:true, backgroundColor:card, borderColor:grid, style:{color:fg,fontSize:"12px"},
-        // 提示框固定放在該年柱子（含佔比點）正上方，不遮柱
+      tooltip:{ shared:true, useHTML:true, outside:true, backgroundColor:card, borderColor:grid, style:{color:fg,fontSize:"12px"},
+        // 提示框固定放在該年柱子（含佔比點）正上方，不遮柱；outside 讓它可超出圖框往上長
         positioner:function(w,h,pt){
           var c=this.chart, i=Math.round(c.xAxis[0].toValue(pt.plotX,true)), top=c.plotHeight;
           c.series.forEach(function(s){ var p=s.visible&&s.points[i]; if(p&&p.plotY!=null) top=Math.min(top,p.plotY); });
           var x=c.plotLeft+c.xAxis[0].toPixels(i,true)-w/2;
-          return { x:Math.max(0,Math.min(x,c.chartWidth-w)), y:Math.max(0,c.plotTop+top-h-10) };
+          return { x:Math.max(0,Math.min(x,c.chartWidth-w)), y:c.plotTop+top-h-10 };
         },
         formatter:function(){
           var i=this.points[0].point.index, g=sum(d,GPU,i), a=sum(d,ASIC,i), shr=null, gp=[], ap=[];
