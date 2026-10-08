@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="AI 加速器出貨顆數：GPU 與 ASIC 出貨、ASIC 佔比與各家 ASIC 市佔">
+<title>AI加速器出貨看板</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
+</head>
+<body>
+<style>
+/* 沿用美光看板骨架：單欄卡片、MacroMicro 風格配色（藍柱、紅線） */
+:root{
+  --bg:#f5f7f9; --card:#ffffff; --fg:#2b3340; --muted:#6b7684; --line:#e3e7ec; --grid:#e6e6e6;
+  --bar:#42A9E5; --bar-est:#A9D4F2; --yoy:#FF3333; --qoq:#F5A623;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#141a21; --card:#1c242d; --fg:#e6ebf0; --muted:#9aa5b1; --line:#2c3640; --grid:#2c3640; --bar-est:#7fb6dd; color-scheme:dark }
+}
+:root[data-theme="dark"]{ --bg:#141a21; --card:#1c242d; --fg:#e6ebf0; --muted:#9aa5b1; --line:#2c3640; --grid:#2c3640; --bar-est:#7fb6dd; color-scheme:dark }
+body{ background:var(--bg); color:var(--fg); font-family:var(--font); padding-block:24px; padding-inline:16px; margin:0 }
+.wrap{ max-width:940px; margin:0 auto; display:flex; flex-direction:column; gap:14px }
+h1{ font-size:22px; font-weight:700; margin:0; text-wrap:balance }
+h1 .tk{ color:var(--muted); font-weight:500; font-size:16px; margin-left:6px }
+h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
+.meta{ color:var(--muted); font-size:13px; margin:0 }
+.card{ background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 8px 6px; min-width:0 }
+.note{ color:var(--muted); font-size:12.5px; line-height:1.6; margin:0; padding-inline:4px }
+.note b{ color:var(--fg); font-weight:500 }
+.seg{ display:flex; gap:4px; margin:0 0 4px 6px }
+.seg button{ font:inherit; font-size:12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:4px; padding:3px 9px; cursor:pointer }
+.seg button[aria-pressed="true"]{ background:#3bbd8f; border-color:#3bbd8f; color:#fff }
+.seg button:focus-visible{ outline:2px solid var(--bar); outline-offset:1px }
+#chart1{ width:100%; height:480px }
+@media (max-width:480px){ #chart1{ height:420px } h1{ font-size:19px } }
+</style>
+
+<div class="wrap">
+  <h1>AI 加速器出貨：GPU vs ASIC<span class="tk">萬顆</span></h1>
+  <p class="meta">年度出貨顆數（萬顆）與 ASIC 佔比。點圖例可開關各序列；上方切換 JPM 原表／修正版。</p>
+
+  <h2>GPU 與 ASIC 出貨顆數、ASIC 佔比</h2>
+  <div class="card">
+    <div class="seg" role="group" aria-label="資料版本">
+      <button type="button" id="segAdj" aria-pressed="true">修正版</button>
+      <button type="button" id="segOrig" aria-pressed="false">JPM 原表</button>
+    </div>
+    <div id="chart1"></div>
+  </div>
+  <p class="note">
+    <b>資料：</b>J.P. Morgan〈US Semiconductors〉2026/9/1 第 10 頁（原表單位百萬顆，×100 換算萬顆）。
+    <b>修正版</b>＝JPM 原表＋OpenAI 新增列＋2028 Google TPU 上修（1,160→1,235 萬顆），GW 換算：TPU 當代 1.2kW、TPU 下一代 1.5kW、OpenAI XPU 1.75kW（每顆含系統分攤，TPU 依據 Google Ironwood 9,216 顆約 10MW）。2026E 起為預估。
+  </p>
+  <p class="note">[註]: Anthropic 繼 2026 年 1GW Ironwood 後，2027 年再部署 5GW TPU v8i，2028 年再增加 10GW；OpenAI Jalapeño 2027 年部署 1.3GW、2028 年逾 5GW（26Q2 法說會）。</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.4.8/highcharts.js"></script>
+<script>
+(function(){
+  var YRS=["2023","2024","2025","2026E","2027E","2028E"];
+  // 萬顆；JPM 原表（百萬顆 ×100）
+  var ORIG={
+    NVIDIA:[170,450,620,890,1000,1160], AMD:[10,50,70,70,150,230],
+    Google:[120,170,180,440,890,1160], AWS:[30,80,150,190,350,350],
+    Meta:[0,0,0,30,50,110], MSFT:[0,0,0,20,80,80], OpenAI:[0,0,0,0,0,0]
+  };
+  // 修正版：只改有博通法說會依據的格子
+  var ADJ=JSON.parse(JSON.stringify(ORIG));
+  ADJ.Google[5]=1235;              // Anthropic 10GW÷1.5kW≈667 ＋ Google 自用 473×1.2≈568
+  ADJ.OpenAI=[0,0,0,0,74,286];     // 1.3GW、5GW ÷1.75kW
+  var GPU=["NVIDIA","AMD"], ASIC=["Google","AWS","Meta","MSFT","OpenAI"];
+  var NAME={NVIDIA:"NVIDIA GPU",AMD:"AMD GPU",Google:"Google TPU",AWS:"AWS Trainium",Meta:"Meta MTIA",MSFT:"MSFT Maia",OpenAI:"OpenAI XPU"};
+  var COL={NVIDIA:"#1F5FA8",AMD:"#7FB3E0",Google:"#16A085",AWS:"#F39C12",Meta:"#8E44AD",MSFT:"#5D6D7E",OpenAI:"#C0392B"};
+  var mode="adj", chart1;
+
+  function tok(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function sum(d,keys,i){ return keys.reduce(function(s,k){ return s+d[k][i]; },0); }
+
+  function build1(){
+    var fg=tok("--fg"), muted=tok("--muted"), grid=tok("--grid"), card=tok("--card"), font=tok("--font"), red=tok("--yoy");
+    var d=mode==="adj"?ADJ:ORIG;
+    var share=YRS.map(function(_,i){ var a=sum(d,ASIC,i), g=sum(d,GPU,i); return +((a/(a+g))*100).toFixed(1); });
+    var series=[];
+    GPU.concat(ASIC).forEach(function(k){
+      if(mode==="orig" && k==="OpenAI") return;
+      series.push({ name:NAME[k], type:"column", color:COL[k], stack:GPU.indexOf(k)>=0?"GPU":"ASIC", data:d[k], yAxis:0 });
+    });
+    series.push({ name:"ASIC 佔比(R)", type:"line", color:red, data:share, yAxis:1,
+      zoneAxis:"x", zones:[{value:2.5},{dashStyle:"ShortDash"}] });
+    var opts={
+      chart:{ backgroundColor:card, style:{fontFamily:font}, spacing:[10,16,8,8] },
+      title:{ text:"GPU vs ASIC 出貨顆數", style:{color:fg,fontSize:"15px",fontWeight:"700"} },
+      subtitle:{ text:mode==="adj"?"J.P. Morgan 2026/9/1＋博通法說會修正":"J.P. Morgan 2026/9/1 原表", style:{color:muted,fontSize:"11px"} },
+      credits:{ enabled:false },
+      legend:{ enabled:true, align:"center", verticalAlign:"bottom", itemStyle:{color:fg,fontSize:"12px",fontWeight:"400"},
+        itemHiddenStyle:{color:"#9aa5b1"}, itemHoverStyle:{color:fg}, symbolRadius:6 },
+      xAxis:{ categories:YRS, lineColor:grid, tickColor:grid, labels:{style:{color:muted,fontSize:"11px"}},
+        plotBands:[{ from:2.5, to:5.5, color:"rgba(150,160,170,0.08)", label:{ text:"預估", style:{color:muted,fontSize:"11px"} } }] },
+      yAxis:[
+        { title:{text:"萬顆",style:{color:muted,fontSize:"11px"}}, gridLineColor:grid, min:0, stackLabels:{enabled:false},
+          labels:{ style:{color:muted,fontSize:"11px"}, formatter:function(){ return Highcharts.numberFormat(this.value,0); } } },
+        { title:{text:"ASIC 佔比 %",style:{color:muted,fontSize:"11px"}}, opposite:true, gridLineWidth:0, min:0, max:100,
+          labels:{ style:{color:muted,fontSize:"11px"}, format:"{value}%" } }
+      ],
+      tooltip:{ shared:true, useHTML:true, backgroundColor:card, borderColor:grid, style:{color:fg,fontSize:"12px"},
+        formatter:function(){
+          var i=this.points[0].point.index, g=sum(d,GPU,i), a=sum(d,ASIC,i), s="<b>"+YRS[i]+"</b>";
+          this.points.forEach(function(p){ var pct=p.series.options.yAxis===1;
+            s+='<br><span style="color:'+p.color+'">●</span> '+p.series.name+": <b>"+(pct?p.y+"%":Highcharts.numberFormat(p.y,0)+" 萬")+"</b>"; });
+          return s+'<br><span style="color:'+muted+'">GPU '+Highcharts.numberFormat(g,0)+" 萬｜ASIC "+Highcharts.numberFormat(a,0)+" 萬</span>"; } },
+      plotOptions:{
+        column:{ stacking:"normal", borderWidth:0, pointPadding:0.06, groupPadding:0.16 },
+        line:{ lineWidth:2, marker:{enabled:true,symbol:"circle",radius:3} },
+        series:{ states:{inactive:{opacity:1}} }
+      },
+      series:series
+    };
+    if(chart1){ chart1.destroy(); }
+    chart1=Highcharts.chart("chart1",opts);
+  }
+
+  function setMode(m){
+    mode=m;
+    document.getElementById("segAdj").setAttribute("aria-pressed",m==="adj");
+    document.getElementById("segOrig").setAttribute("aria-pressed",m==="orig");
+    build1();
+  }
+  document.getElementById("segAdj").addEventListener("click",function(){ setMode("adj"); });
+  document.getElementById("segOrig").addEventListener("click",function(){ setMode("orig"); });
+
+  function build(){ build1(); }
+  Highcharts.setOptions({ lang:{ thousandsSep:"," } });
+  build();
+  var mq=window.matchMedia("(prefers-color-scheme: dark)");
+  if(mq.addEventListener) mq.addEventListener("change",build);
+  new MutationObserver(build).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>
+</body>
+</html>
