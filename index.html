@@ -50,7 +50,7 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
   </div>
   <p class="note">
     <b>資料：</b>綜合券商報告（2026/9），單位換算為萬顆。
-    <b>修正版</b>＝修正前數字＋OpenAI 新增列＋2028 Google TPU 上修（1,160→1,235 萬顆），GW 換算：TPU 當代 1.2kW、TPU 下一代 1.5kW、OpenAI XPU 1.75kW（每顆含系統分攤，TPU 依據 Google Ironwood 9,216 顆約 10MW）。2026E 起為預估。
+    <b>修正版</b>＝修正前數字＋OpenAI 新增列＋2028 Google TPU 上修（1,160→1,235 萬顆）＋2023–2025 MSFT 改用另一家券商的細項（1.2／2.2／0 萬，原表因單位為 0.1 百萬顆而顯示 0），GW 換算：TPU 當代 1.2kW、TPU 下一代 1.5kW、OpenAI XPU 1.75kW（每顆含系統分攤，TPU 依據 Google Ironwood 9,216 顆約 10MW）。2026E 起為預估。
   </p>
   <p class="note">[註]: Anthropic 繼 2026 年 1GW Ironwood 後，2027 年再部署 5GW TPU v8i，2028 年再增加 10GW；OpenAI Jalapeño 2027 年部署 1.3GW、2028 年逾 5GW（26Q2 法說會）。</p>
 </div>
@@ -69,6 +69,9 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
   var ADJ=JSON.parse(JSON.stringify(ORIG));
   ADJ.Google[5]=1235;              // Anthropic 10GW÷1.5kW≈667 ＋ Google 自用 473×1.2≈568
   ADJ.OpenAI=[0,0,0,0,74,286];     // 1.3GW、5GW ÷1.75kW
+  // 原表以 0.1 百萬顆為最小單位、2023–2025 四捨五入成 0 的格子，改用另一家券商的千顆級數字
+  // （Meta 該券商估 20/12/10 萬，超過四捨五入門檻，屬兩家估值分歧而非單位問題，暫不採用）
+  ADJ.MSFT[0]=1.2; ADJ.MSFT[1]=2.2; ADJ.MSFT[2]=0;
   var GPU=["NVIDIA","AMD"], ASIC=["Google","AWS","Meta","MSFT","OpenAI"];
   var NAME={NVIDIA:"NVIDIA GPU",AMD:"AMD GPU",Google:"Google TPU",AWS:"AWS Trainium",Meta:"Meta MTIA",MSFT:"MSFT Maia",OpenAI:"OpenAI XPU"};
   var COL={NVIDIA:"#1F5FA8",AMD:"#7FB3E0",Google:"#16A085",AWS:"#F39C12",Meta:"#8E44AD",MSFT:"#5D6D7E",OpenAI:"#C0392B"};
@@ -107,7 +110,7 @@ h2{ font-size:18px; font-weight:700; margin:18px 0 0; text-wrap:balance }
         formatter:function(){
           var i=this.points[0].point.index, g=sum(d,GPU,i), a=sum(d,ASIC,i), s="<b>"+YRS[i]+"</b>";
           this.points.forEach(function(p){ var pct=p.series.options.yAxis===1;
-            s+='<br><span style="color:'+p.color+'">●</span> '+p.series.name+": <b>"+(pct?p.y+"%":Highcharts.numberFormat(p.y,0)+" 萬")+"</b>"; });
+            s+='<br><span style="color:'+p.color+'">●</span> '+p.series.name+": <b>"+(pct?p.y+"%":Highcharts.numberFormat(p.y,p.y%1?1:0)+" 萬")+"</b>"; });
           return s+'<br><span style="color:'+muted+'">GPU '+Highcharts.numberFormat(g,0)+" 萬｜ASIC "+Highcharts.numberFormat(a,0)+" 萬</span>"; } },
       plotOptions:{
         column:{ stacking:"normal", borderWidth:0, pointPadding:0.06, groupPadding:0.16 },
