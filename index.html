@@ -88,10 +88,11 @@ table.num tr.child td:first-child{ padding-left:22px }
   ADJ.MSFT[0]=1.2; ADJ.MSFT[1]=2.2; ADJ.MSFT[2]=0;
   var GPU=["NVIDIA","AMD"], ASIC=["Google","AWS","Meta","MSFT","OpenAI"];
   var NAME={NVIDIA:"NVIDIA GPU",AMD:"AMD GPU",Google:"Google TPU",AWS:"AWS Trainium",Meta:"Meta MTIA",MSFT:"MSFT Maia",OpenAI:"OpenAI XPU"};
+  var GR_GPU="#3949AB", GR_ASIC="#E91E63";   // 增速線（避開柱色）
   var COL={NVIDIA:"#1F5FA8",AMD:"#7FB3E0",Google:"#16A085",AWS:"#F39C12",Meta:"#8E44AD",MSFT:"#5D6D7E",OpenAI:"#C0392B"};
   // 修正版 Google TPU 中 Anthropic 部分（1GW÷1.2kW、5GW÷1.2kW、10GW÷1.5kW）
   var ANTH=[null,null,null,83,417,667];
-  var mode="adj", chart1;
+  var mode="adj", chart1, grVisible=false;   // 增速線開關狀態（切換版本時保留）
 
   /* ---------- 數值參考表 ---------- */
   function buildTable(){
@@ -133,6 +134,14 @@ table.num tr.child td:first-child{ padding-left:22px }
     });
     series.push({ name:"ASIC 佔比(R)", type:"line", color:red, data:share, yAxis:1,
       zoneAxis:"x", zones:[{value:2.5},{dashStyle:"ShortDash"}] });
+    // GPU／ASIC 顆數年增率：同一個圖例開關控制兩條線，預設關閉
+    function gr(arr){ return arr.map(function(v,i){ return i&&arr[i-1]?Math.round((v/arr[i-1]-1)*100):null; }); }
+    var Gs=YRS.map(function(_,i){ return sum(d,GPU,i); }), As=YRS.map(function(_,i){ return sum(d,ASIC,i); });
+    var grEv={ legendItemClick:function(){ grVisible=!this.visible; } };
+    series.push({ id:"gr", name:"GPU／ASIC 增速(R)", type:"line", color:GR_GPU, data:gr(Gs), yAxis:2, visible:grVisible, grName:"GPU 增速",
+      marker:{symbol:"square"}, zoneAxis:"x", zones:[{value:2.5},{dashStyle:"ShortDash"}], events:grEv });
+    series.push({ linkedTo:"gr", name:"ASIC 增速", type:"line", color:GR_ASIC, data:gr(As), yAxis:2, visible:grVisible, grName:"ASIC 增速",
+      marker:{symbol:"diamond"}, zoneAxis:"x", zones:[{value:2.5},{dashStyle:"ShortDash"}] });
     var opts={
       chart:{ backgroundColor:card, style:{fontFamily:font}, spacing:[10,16,8,8] },
       title:{ text:"GPU vs ASIC 出貨顆數", style:{color:fg,fontSize:"15px",fontWeight:"700"} },
@@ -146,6 +155,8 @@ table.num tr.child td:first-child{ padding-left:22px }
         { title:{text:"萬顆",style:{color:muted,fontSize:"11px"}}, gridLineColor:grid, min:0, stackLabels:{enabled:false},
           labels:{ style:{color:muted,fontSize:"11px"}, formatter:function(){ return Highcharts.numberFormat(this.value,0); } } },
         { title:{text:"ASIC 佔比 %",style:{color:muted,fontSize:"11px"}}, opposite:true, gridLineWidth:0, min:0, max:100,
+          labels:{ style:{color:muted,fontSize:"11px"}, format:"{value}%" } },
+        { title:{text:"年增率 %",style:{color:muted,fontSize:"11px"}}, opposite:true, gridLineWidth:0, showEmpty:false,
           labels:{ style:{color:muted,fontSize:"11px"}, format:"{value}%" } }
       ],
       tooltip:{ shared:true, useHTML:true, outside:true, backgroundColor:card, borderColor:grid, style:{color:fg,fontSize:"12px"},
@@ -157,15 +168,16 @@ table.num tr.child td:first-child{ padding-left:22px }
           return { x:Math.max(0,Math.min(x,c.chartWidth-w)), y:c.plotTop+top-h-10 };
         },
         formatter:function(){
-          var i=this.points[0].point.index, g=sum(d,GPU,i), a=sum(d,ASIC,i), shr=null, gp=[], ap=[];
+          var i=this.points[0].point.index, g=sum(d,GPU,i), a=sum(d,ASIC,i), shr=null, gp=[], ap=[], gg={};
           function f(v){ return Highcharts.numberFormat(v,v%1?1:0); }
           this.points.forEach(function(p){
             if(p.series.options.yAxis===1){ shr=p.y; return; }
+            if(p.series.options.yAxis===2){ gg[p.series.options.grName]='<b style="color:'+p.color+'">'+(p.y>0?"+":"")+p.y+'%</b>'; return; }
             (p.series.options.stack==="GPU"?gp:ap).push('<span style="color:'+p.color+'">●</span> '+p.series.name+' <b>'+f(p.y)+'</b>'); });
           var rows=Math.max(gp.length,ap.length), t='<table style="border-collapse:collapse;line-height:1.45">';
           t+='<tr><td colspan="2"><b>'+YRS[i]+'</b>'+(shr!=null?'　ASIC 佔比 <b style="color:'+red+'">'+shr+'%</b>':'')+'</td></tr>';
           for(var r=0;r<rows;r++) t+='<tr><td style="padding-right:14px">'+(gp[r]||"")+'</td><td>'+(ap[r]||"")+'</td></tr>';
-          t+='<tr style="color:'+muted+'"><td style="padding-right:14px">GPU 小計 '+f(g)+' 萬</td><td>ASIC 小計 '+f(a)+' 萬</td></tr>';
+          t+='<tr style="color:'+muted+'"><td style="padding-right:14px">GPU 小計 '+f(g)+' 萬'+(gg["GPU 增速"]?'（'+gg["GPU 增速"]+'）':'')+'</td><td>ASIC 小計 '+f(a)+' 萬'+(gg["ASIC 增速"]?'（'+gg["ASIC 增速"]+'）':'')+'</td></tr>';
           return t+'</table>'; } },
       plotOptions:{
         column:{ stacking:"normal", borderWidth:0, pointPadding:0.06, groupPadding:0.16 },
